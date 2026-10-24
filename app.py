@@ -14,8 +14,12 @@ st.set_page_config(
     layout="centered",
 )
 st.title("📖 Chatbot AI - Chiến tranh Biên giới Tây Nam 1979")
-st.caption("Tạo bởi 12A5 THPT Lê Quý Đôn - Dự án Liên môn 50.01 | Hoạt động dựa vào AI model Gemini 3.8 Flash")
-st.caption("Lưu ý: Chatbot được xây dựng trên model miễn phí, khuyến khích né giờ cao điểm 20h-02h và nên truy cập vào buổi sáng")
+st.caption(
+    "Tạo bởi 12A5 THPT Lê Quý Đôn - Dự án Liên môn 50.01 | Hoạt động dựa vào AI model Gemini"
+)
+st.caption(
+    "Lưu ý: Chatbot được xây dựng trên model miễn phí, khuyến khích né giờ cao điểm 20h-02h và nên truy cập vào buổi sáng"
+)
 
 
 # Nạp tài liệu tối ưu tốc độ (Không upload trùng lặp)
@@ -60,7 +64,10 @@ def load_backend_documents():
           config=types.UploadFileConfig(display_name=file_name),
       )
       # Chờ nếu file đang trong quá trình xử lý (đối với tài liệu lớn/PDF)
-      while getattr(getattr(gemini_file, "state", None), "name", None) == "PROCESSING":
+      while (
+          getattr(getattr(gemini_file, "state", None), "name", None)
+          == "PROCESSING"
+      ):
         time.sleep(1)
         gemini_file = client.files.get(name=gemini_file.name)
 
@@ -111,24 +118,34 @@ if user_query:
 
   contents = list(backend_files) + [user_query]
 
-  # Hiển thị câu trả lời của trợ lý
+  # Hiển thị câu trả lời của trợ lý kèm cơ chế Retry chống quá tải
   with st.chat_message("assistant"):
     with st.spinner("Đang tra cứu tài liệu..."):
-      try:
-        response = client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=STRICT_SYSTEM_INSTRUCTION,
-                temperature=0.0,
-            ),
-        )
-        answer = response.text
-        st.write(answer)
-        st.session_state.history.append({"role": "assistant", "content": answer})
-      except Exception as e:
-        error_msg = f"Đã xảy ra lỗi hệ thống: {e}"
-        st.error(error_msg)
-        st.session_state.history.append(
-            {"role": "assistant", "content": error_msg}
-        )
+      max_retries = 3
+      retry_delay = 2
+      answer = None
+
+      for attempt in range(max_retries):
+        try:
+          response = client.models.generate_content(
+              model="gemini-3.8-flash",
+              contents=contents,
+              config=types.GenerateContentConfig(
+                  system_instruction=STRICT_SYSTEM_INSTRUCTION,
+                  temperature=0.0,
+              ),
+          )
+          answer = response.text
+          break
+        except Exception as e:
+          if attempt < max_retries - 1:
+            time.sleep(retry_delay)  # Chờ 2 giây rồi tự động gọi lại ngầm
+          else:
+            answer = (
+                "Hệ thống đang quá tải tạm thời do lượng truy cập tăng đột ngột"
+                f" (Demand Spiking). Vui lòng thử lại sau ít phút. Chi tiết lỗi:"
+                f" {e}"
+            )
+
+      st.write(answer)
+      st.session_state.history.append({"role": "assistant", "content": answer})
