@@ -4,7 +4,7 @@ from google import genai
 from google.genai import types
 import streamlit as st
 
-DOCS_FOLDER = "./document"
+DOCS_FOLDER = "./documents"
 
 # Cấu hình giao diện web tối giản
 st.set_page_config(
@@ -33,9 +33,9 @@ def load_backend_documents():
 
   uploaded_gemini_files = []
   for file_path in files_to_upload:
-    with open(file_path, "rb") as f:
-      gemini_file = client.files.upload(file=f)
-      uploaded_gemini_files.append(gemini_file)
+    # SỬA QUAN TRỌNG: Truyền trực tiếp đường dẫn file_path (string) để SDK tự nhận diện MIME type
+    gemini_file = client.files.upload(file=file_path)
+    uploaded_gemini_files.append(gemini_file)
 
   return (client, uploaded_gemini_files), "Thành công"
 
