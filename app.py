@@ -113,7 +113,7 @@ if user_query:
     with st.spinner("Đang tra cứu tài liệu..."):
       try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.8-flash",
             contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=STRICT_SYSTEM_INSTRUCTION,
