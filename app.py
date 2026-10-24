@@ -1,7 +1,6 @@
 import glob
 import os
-from google import genai
-from google.genai import types
+import google.generativeai as genai  # Sử dụng thư viện chuẩn google-generativeai
 import streamlit as st
 
 DOCS_FOLDER = "./documents"
@@ -11,7 +10,7 @@ st.set_page_config(
     page_title="Trợ Lý Hỏi Đáp Kiến Thức", page_icon="📖", layout="centered"
 )
 st.title("📖 Trợ Lý Hỏi - Đáp Kiến Thức Giáo Dục")
-st.caption("Hệ thống trả lời dựa trên tài liệu độc quyền.")
+st.caption("Hệ thống trả lời dựa trên tài liệu độc quyền của trường/lớp.")
 
 
 # Nạp tài liệu nguồn ngầm từ Backend
@@ -19,9 +18,10 @@ st.caption("Hệ thống trả lời dựa trên tài liệu độc quyền.")
 def load_backend_documents():
   api_key = st.secrets.get("GEMINI_API_KEY")
   if not api_key:
-    return None, "Thiếu Gemini API Key trong cấu hình Secrets!"
+    return None, "Thiếu Gemini API Key trong mục Secrets của Streamlit Cloud!"
 
-  client = genai.Client(api_key=api_key)
+  # Cấu hình API key cho generativeai
+  genai.configure(api_key=api_key)
 
   supported_extensions = ["*.pdf", "*.txt", "*.docx"]
   files_to_upload = []
@@ -33,19 +33,17 @@ def load_backend_documents():
 
   uploaded_gemini_files = []
   for file_path in files_to_upload:
-    with open(file_path, "rb") as f:
-      gemini_file = client.files.upload(file=f)
-      uploaded_gemini_files.append(gemini_file)
+    # Tải file lên thông qua Google Files API
+    g_file = genai.upload_file(file_path)
+    uploaded_gemini_files.append(g_file)
 
-  return (client, uploaded_gemini_files), "Thành công"
+  return uploaded_gemini_files, "Thành công"
 
 
-result, status_msg = load_backend_documents()
-if result is None:
+backend_files, status_msg = load_backend_documents()
+if backend_files is None:
   st.error(f"Lỗi hệ thống: {status_msg}")
   st.stop()
-
-client, backend_files = result
 
 # System Instruction khắt khe: Không tìm nguồn ngoài, bắt buộc báo không tìm thấy
 STRICT_SYSTEM_INSTRUCTION = """
@@ -60,6 +58,12 @@ BẮT BUỘC TUÂN THỦ CÁC QUY TẮC SAU:
 4. Không được phép tự ý bịa ra câu trả lời dưới bất kỳ hình thức nào.
 """
 
+# Khởi tạo mô hình với system instruction và temperature = 0.0
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-flash",
+    system_instruction=STRICT_SYSTEM_INSTRUCTION,
+)
+
 # Giao diện khung chat / hỏi đáp
 if "history" not in st.session_state:
   st.session_state.history = []
@@ -68,17 +72,13 @@ user_query = st.chat_input("Nhập câu hỏi của bạn tại đây...")
 
 if user_query:
   st.session_state.history.append({"role": "user", "content": user_query})
-  contents = list(backend_files) + [user_query]
 
   with st.spinner("Đang tra cứu tài liệu..."):
     try:
-      response = client.models.generate_content(
-          model="gemini-2.5-flash",
-          contents=contents,
-          config=types.GenerateContentConfig(
-              system_instruction=STRICT_SYSTEM_INSTRUCTION,
-              temperature=0.0,  # 0.0 để ép AI tuyệt đối bám sát văn bản, không sáng tác
-          ),
+      # Gửi kèm các file backend và câu hỏi
+      response = model.generate_content(
+          contents=backend_files + [user_query],
+          generation_config={"temperature": 0.0},
       )
       answer = response.text
       st.session_state.history.append({"role": "assistant", "content": answer})
