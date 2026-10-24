@@ -4,7 +4,7 @@ from google import genai
 from google.genai import types
 import streamlit as st
 
-DOCS_FOLDER = "./documents"
+DOCS_FOLDER = "./document"
 
 # Cấu hình giao diện web tối giản
 st.set_page_config(
