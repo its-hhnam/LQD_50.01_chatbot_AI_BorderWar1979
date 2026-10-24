@@ -9,10 +9,12 @@ DOCS_FOLDER = "./document"
 
 # Cấu hình giao diện web tối giản
 st.set_page_config(
-    page_title="Trợ Lý Hỏi Đáp Kiến Thức", page_icon="📖", layout="centered"
+    page_title="Chatbot AI - Chiến tranh Biên giới Tây Nam 1979",
+    page_icon="📖",
+    layout="centered",
 )
-st.title("📖 Trợ Lý Hỏi - Đáp Kiến Thức Giáo Dục")
-st.caption("Hệ thống tra cứu thông minh dựa trên tài liệu độc quyền.")
+st.title("📖 Chatbot AI - Chiến tranh Biên giới Tây Nam 1979")
+st.caption("Tạo bởi 12A5 THPT Lê Quý Đôn - Dự án Liên môn 50.01 | Hoạt động dựa vào AI model Gemini 3.8 Flash")
 
 
 # Nạp tài liệu tối ưu tốc độ (Không upload trùng lặp)
