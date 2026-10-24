@@ -1,5 +1,6 @@
 import glob
 import os
+import time
 from google import genai
 from google.genai import types
 import streamlit as st
@@ -29,11 +30,16 @@ def load_backend_documents():
     local_files.extend(glob.glob(os.path.join(DOCS_FOLDER, ext)))
 
   if not local_files:
-    return None, "Không tìm thấy tài liệu nào trong thư mục documents."
+    return None, "Không tìm thấy tài liệu nào trong thư mục document."
 
-  # Lấy danh sách các file hiện có trên Gemini để kiểm tra
+  # Lấy danh sách các file ACTIVE hiện có trên Gemini để tái sử dụng
   try:
-    existing_files = {f.display_name: f for f in client.files.list()}
+    existing_files = {
+        f.display_name: f
+        for f in client.files.list()
+        if getattr(f, "display_name", None)
+        and getattr(getattr(f, "state", None), "name", None) == "ACTIVE"
+    }
   except Exception:
     existing_files = {}
 
@@ -41,12 +47,20 @@ def load_backend_documents():
   for file_path in local_files:
     file_name = os.path.basename(file_path)
 
-    # Nếu file đã tồn tại trên server Google, tái sử dụng luôn (siêu tốc)
+    # Nếu file đã tồn tại trên server Google ở trạng thái ACTIVE, tái sử dụng luôn
     if file_name in existing_files:
       uploaded_gemini_files.append(existing_files[file_name])
     else:
-      # Nếu chưa có thì mới tiến hành upload
-      gemini_file = client.files.upload(file=file_path)
+      # Upload kèm display_name để Files API lưu tên file gốc
+      gemini_file = client.files.upload(
+          file=file_path,
+          config=types.UploadFileConfig(display_name=file_name),
+      )
+      # Chờ nếu file đang trong quá trình xử lý (đối với tài liệu lớn/PDF)
+      while getattr(getattr(gemini_file, "state", None), "name", None) == "PROCESSING":
+        time.sleep(1)
+        gemini_file = client.files.get(name=gemini_file.name)
+
       uploaded_gemini_files.append(gemini_file)
 
   return (client, uploaded_gemini_files), "Thành công"
@@ -74,38 +88,44 @@ BẮT BUỘC TUÂN THỦ CÁC QUY TẮC SAU:
 4. Không được phép tự ý bịa ra câu trả lời dưới bất kỳ hình thức nào.
 """
 
-# Giao diện khung chat / hỏi đáp
+# Khởi tạo lịch sử chat
 if "history" not in st.session_state:
   st.session_state.history = []
 
+# 1. Hiển thị lịch sử hỏi đáp hiện có
+for item in st.session_state.history:
+  with st.chat_message(item["role"]):
+    st.write(item["content"])
+
+# 2. Xử lý câu hỏi mới từ người dùng
 user_query = st.chat_input("Nhập câu hỏi của bạn tại đây...")
 
 if user_query:
+  # Hiển thị ngay câu hỏi của user trên giao diện
+  with st.chat_message("user"):
+    st.write(user_query)
   st.session_state.history.append({"role": "user", "content": user_query})
+
   contents = list(backend_files) + [user_query]
 
-  with st.spinner("Đang tra cứu tài liệu..."):
-    try:
-      response = client.models.generate_content(
-          model="gemini-2.5-flash",
-          contents=contents,
-          config=types.GenerateContentConfig(
-              system_instruction=STRICT_SYSTEM_INSTRUCTION,
-              temperature=0.0,
-          ),
-      )
-      answer = response.text
-      st.session_state.history.append({"role": "assistant", "content": answer})
-    except Exception as e:
-      st.session_state.history.append(
-          {"role": "assistant", "content": f"Đã xảy ra lỗi hệ thống: {e}"}
-      )
-
-# Hiển thị lịch sử hỏi đáp
-for item in st.session_state.history:
-  if item["role"] == "user":
-    with st.chat_message("user"):
-      st.write(item["content"])
-  else:
-    with st.chat_message("assistant"):
-      st.write(item["content"])
+  # Hiển thị câu trả lời của trợ lý
+  with st.chat_message("assistant"):
+    with st.spinner("Đang tra cứu tài liệu..."):
+      try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=STRICT_SYSTEM_INSTRUCTION,
+                temperature=0.0,
+            ),
+        )
+        answer = response.text
+        st.write(answer)
+        st.session_state.history.append({"role": "assistant", "content": answer})
+      except Exception as e:
+        error_msg = f"Đã xảy ra lỗi hệ thống: {e}"
+        st.error(error_msg)
+        st.session_state.history.append(
+            {"role": "assistant", "content": error_msg}
+        )
