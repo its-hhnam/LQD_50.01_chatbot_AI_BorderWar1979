@@ -4,17 +4,17 @@ from google import genai
 from google.genai import types
 import streamlit as st
 
-DOCS_FOLDER = "./document"
+DOCS_FOLDER = "./documents"
 
 # Cấu hình giao diện web tối giản
 st.set_page_config(
     page_title="Trợ Lý Hỏi Đáp Kiến Thức", page_icon="📖", layout="centered"
 )
 st.title("📖 Trợ Lý Hỏi - Đáp Kiến Thức Giáo Dục")
-st.caption("Hệ thống trả lời dựa trên tài liệu độc quyền của trường/lớp.")
+st.caption("Hệ thống tra cứu thông minh dựa trên tài liệu độc quyền.")
 
 
-# Nạp tài liệu nguồn ngầm từ Backend
+# Nạp tài liệu tối ưu tốc độ (Không upload trùng lặp)
 @st.cache_resource
 def load_backend_documents():
   api_key = st.secrets.get("GEMINI_API_KEY")
@@ -24,30 +24,44 @@ def load_backend_documents():
   client = genai.Client(api_key=api_key)
 
   supported_extensions = ["*.pdf", "*.txt", "*.docx"]
-  files_to_upload = []
+  local_files = []
   for ext in supported_extensions:
-    files_to_upload.extend(glob.glob(os.path.join(DOCS_FOLDER, ext)))
+    local_files.extend(glob.glob(os.path.join(DOCS_FOLDER, ext)))
 
-  if not files_to_upload:
+  if not local_files:
     return None, "Không tìm thấy tài liệu nào trong thư mục documents."
 
+  # Lấy danh sách các file hiện có trên Gemini để kiểm tra
+  try:
+    existing_files = {f.display_name: f for f in client.files.list()}
+  except Exception:
+    existing_files = {}
+
   uploaded_gemini_files = []
-  for file_path in files_to_upload:
-    # SỬA QUAN TRỌNG: Truyền trực tiếp đường dẫn file_path (string) để SDK tự nhận diện MIME type
-    gemini_file = client.files.upload(file=file_path)
-    uploaded_gemini_files.append(gemini_file)
+  for file_path in local_files:
+    file_name = os.path.basename(file_path)
+
+    # Nếu file đã tồn tại trên server Google, tái sử dụng luôn (siêu tốc)
+    if file_name in existing_files:
+      uploaded_gemini_files.append(existing_files[file_name])
+    else:
+      # Nếu chưa có thì mới tiến hành upload
+      gemini_file = client.files.upload(file=file_path)
+      uploaded_gemini_files.append(gemini_file)
 
   return (client, uploaded_gemini_files), "Thành công"
 
 
-result, status_msg = load_backend_documents()
+with st.spinner("Đang khởi động hệ thống tri thức..."):
+  result, status_msg = load_backend_documents()
+
 if result is None:
   st.error(f"Lỗi hệ thống: {status_msg}")
   st.stop()
 
 client, backend_files = result
 
-# System Instruction khắt khe: Không tìm nguồn ngoài, bắt buộc báo không tìm thấy
+# System Instruction khắt khe
 STRICT_SYSTEM_INSTRUCTION = """
 Bạn là một hệ thống tra cứu tài liệu nội bộ chính xác tuyệt đối. 
 Nhiệm vụ của bạn là đọc các tài liệu được cung cấp ngầm và trả lời câu hỏi của người dùng.
@@ -73,11 +87,11 @@ if user_query:
   with st.spinner("Đang tra cứu tài liệu..."):
     try:
       response = client.models.generate_content(
-          model="gemini-3.8-flash",
+          model="gemini-2.5-flash",
           contents=contents,
           config=types.GenerateContentConfig(
               system_instruction=STRICT_SYSTEM_INSTRUCTION,
-              temperature=0.0,  # 0.0 để ép AI tuyệt đối bám sát văn bản, không sáng tác
+              temperature=0.0,
           ),
       )
       answer = response.text
