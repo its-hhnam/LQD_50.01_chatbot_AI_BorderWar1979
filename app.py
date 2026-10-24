@@ -15,6 +15,7 @@ st.set_page_config(
 )
 st.title("📖 Chatbot AI - Chiến tranh Biên giới Tây Nam 1979")
 st.caption("Tạo bởi 12A5 THPT Lê Quý Đôn - Dự án Liên môn 50.01 | Hoạt động dựa vào AI model Gemini 3.8 Flash")
+st.caption("Lưu ý: Chatbot được xây dựng trên model miễn phí, khuyến khích né giờ cao điểm 20h-02h và nên truy cập vào buổi sáng")
 
 
 # Nạp tài liệu tối ưu tốc độ (Không upload trùng lặp)
