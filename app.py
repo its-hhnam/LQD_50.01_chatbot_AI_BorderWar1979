@@ -4,6 +4,7 @@ import time
 from google import genai
 from google.genai import types
 import streamlit as st
+import streamlit.components.v1 as components
 
 DOCS_FOLDER = "./document"
 
@@ -23,22 +24,46 @@ st.caption(
 
 
 # Hiệu ứng Background Gradient tự động đổi màu theo Light/Dark Mode
-# CSS hiệu ứng Gradient nền tự động đổi theo Light/Dark Mode (Không có khối thông báo)
+# Dùng JS để phát hiện Streamlit theme (light/dark) và áp gradient tương ứng
+components.html("""
+<script>
+function applyThemeGradient() {
+    const app = window.parent.document.querySelector('.stApp');
+    if (!app) return;
+    const bg = getComputedStyle(app).backgroundColor;
+    const rgb = bg.match(/\d+/g);
+    if (!rgb) return;
+    // Tính độ sáng để xác định Light hay Dark
+    const brightness = (parseInt(rgb[0]) * 299 + parseInt(rgb[1]) * 587 + parseInt(rgb[2]) * 114) / 1000;
+    if (brightness < 128) {
+        // Dark mode: Tone xanh đậm -> tím
+        app.style.setProperty('background', 'linear-gradient(135deg, #0f172a 0%, #3b0764 100%)', 'important');
+        app.style.setProperty('color', '#f1f5f9', 'important');
+    } else {
+        // Light mode: Tone cam nhẹ -> vàng
+        app.style.setProperty('background', 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)', 'important');
+        app.style.setProperty('color', '#1e293b', 'important');
+    }
+}
+// Chạy ngay khi load
+applyThemeGradient();
+// Theo dõi thay đổi theme (khi user đổi theme trong Streamlit Settings)
+const observer = new MutationObserver(() => { applyThemeGradient(); });
+observer.observe(window.parent.document.documentElement, {
+    attributes: true, subtree: true, childList: true
+});
+</script>
+""", height=0)
+
+# Header và Footer trong suốt (để gradient nền xuyên suốt)
 st.markdown(
     """
     <style>
-    /* Light mode: Tone cam nhẹ -> vàng */
-    .stApp {
-        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%) !important;
-        color: #1e293b !important;
+    header[data-testid="stHeader"] {
+        background: transparent !important;
     }
-
-    /* Dark mode tự động: Tone xanh đậm -> tím */
-    @media (prefers-color-scheme: dark) {
-        .stApp {
-            background: linear-gradient(135deg, #0f172a 0%, #3b0764 100%) !important;
-            color: #f1f5f9 !important;
-        }
+    footer {
+        background: transparent !important;
     }
     </style>
     """,
