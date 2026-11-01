@@ -22,30 +22,28 @@ st.caption(
 )
 
 
+# Hiệu ứng Background Gradient tự động đổi màu theo Light/Dark Mode
+# CSS hiệu ứng Gradient nền tự động đổi theo Light/Dark Mode (Không có khối thông báo)
 st.markdown(
-"""
-<style>
-.custom-gradient-box {
-    padding: 24px;
-    border-radius: 16px;
-    margin: 15px 0px;
-    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-    color: #1e293b;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-}
-
-@media (prefers-color-scheme: dark) {
-    .custom-gradient-box {
-        background: linear-gradient(135deg, #0f172a 0%, #3b0764 100%);
-        color: #f1f5f9;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+    """
+    <style>
+    /* Light mode: Tone cam nhẹ -> vàng */
+    .stApp {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%) !important;
+        color: #1e293b !important;
     }
-}
-</style>
-"""
-, unsafe_allow_html=True)
+
+    /* Dark mode tự động: Tone xanh đậm -> tím */
+    @media (prefers-color-scheme: dark) {
+        .stApp {
+            background: linear-gradient(135deg, #0f172a 0%, #3b0764 100%) !important;
+            color: #f1f5f9 !important;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 # Nạp tài liệu tối ưu tốc độ (Không upload trùng lặp)
 @st.cache_resource
