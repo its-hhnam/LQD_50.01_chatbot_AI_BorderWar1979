@@ -21,6 +21,38 @@ st.caption(
     "Lưu ý: Chatbot được xây dựng trên model miễn phí, khuyến khích né giờ cao điểm 20h-02h và nên truy cập vào buổi sáng"
 )
 
+gradient_style = """
+<style>
+.custom-gradient-box {
+    padding: 24px;
+    border-radius: 16px;
+    margin: 15px 0px;
+    background: linear-gradient(135deg, #fff1eb 0%, e0f#ac9 100 */
+    color: #1e293b;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+@media (prefers-color-scheme: dark) {
+    .custom-gradient-box {
+        background: linear-gradient(135deg, #0f172a 0%, #3b0764 100%);
+        color: #f1f5f9;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+}
+</style>
+"""
+
+st.markdown(gradient_style, unsafe_allow_html=True)
+
+st.markdown(
+    """
+<div class="custom-gradient-box">
+    <h3 style="margin-top: 0; color: inherit;">🌟 Khu vực thông báo / Tiêu đề nổi bật</h3>
+    <p style="margin-bottom: 0;">Giao diện này sẽ tự động chuyển từ <b>Cam nhẹ -> Vàng</b> sang <b>Xanh đậm -> Tím</b> tùy theo chế độ sáng/tối của người dùng.</p>
+</div>
+""",
+    unsafe_allow_html=True,
+)
 
 # Nạp tài liệu tối ưu tốc độ (Không upload trùng lặp)
 @st.cache_resource
